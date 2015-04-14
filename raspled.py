@@ -65,7 +65,7 @@ GPIO.output(G,False)
 ### 常数定义 ###############################################################
 # 行扫描时的时间间隔，根据硬件不同，可能需要微调至一个合适的值，
 # 使得字迹看上去清晰明亮无闪烁
-SLEEP_TIME = 0.005
+SLEEP_TIME = 0.001
 
 ### 常数定义 ###############################################################
 
@@ -126,7 +126,7 @@ def printRow( row, byteRight, byteLeft ):
 	GPIO.output(G,False)  #HC138输出有效，打开显示
 	GPIO.output(LAT,False) #锁定HC595数据输出
 	
-	time.sleep(0.0006)
+	time.sleep(0.001)
 	return
 
 ### 根据输入的32个字节数组，输出到LED屏上去
@@ -138,61 +138,6 @@ def printLED( bytes32 ):
 
 ### 主程序开始
 while True:
-	printLED([0x3F,0xFF,0x3F,0xFF,0x03,0xE0,0x03,0xE0,0x33,0xE7,0x33,0xE7,0x03,0xE0,0x33,0xE7,0x33,0xE7,0x03,0xE0,0x03,0xE0,0x33,0x9F,0x3F,0x9F,0x3F,0x80,0x7F,0xC0,0xFF,0xFF])
+	printLED([0xEF,0xFB,0xEF,0xFB,0x00,0x80,0xEF,0xFB,0xEF,0xFB,0xBF,0xFF,0x7F,0xFF,0x00,0x80,0xEF,0xFF,0xEF,0xFF,0xEF,0xFF,0xEF,0xFF,0xEF,0xFF,0xEF,0xFF,0x0F,0xC0,0xFF,0xFF])
 	
 	
-	
-#	# 指定输出行，循环指定，指定方式是设置译码器的A0,A1,A2三个端口
-#	for r in (0,1,2,3,4,5,6,7):
-#		printRow(r, 0b00000000, 0b00000000)
-#		time.sleep(0.2)
-#		#GPIO.output(G,True) #for test to be deleted
-		
-		
-		
-
-
-
-
-
-#while True:
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,True)
-#	GPIO.output(B,True)
-#	GPIO.output(C,True)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,False)
-#	GPIO.output(B,True)
-#	GPIO.output(C,True)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,True)
-#	GPIO.output(B,False)
-#	GPIO.output(C,True)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,True)
-#	GPIO.output(B,True)
-#	GPIO.output(C,False)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,False)
-#	GPIO.output(B,True)
-#	GPIO.output(C,False)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,True)
-#	GPIO.output(B,False)
-#	GPIO.output(C,False)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,False)
-#	GPIO.output(B,False)
-#	GPIO.output(C,True)
-#
-#	time.sleep(0.5)
-#	GPIO.output(A,False)
-#	GPIO.output(B,False)
-#	GPIO.output(C,False)
