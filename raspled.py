@@ -62,10 +62,6 @@ GPIO.setup(LAT,GPIO.OUT)
 # G端口为使能端口，低电平时输出有效1
 GPIO.output(G,False)
 
-# D端口用来控制16×16点阵的上面8行输出还是下面8行输出
-# D端口设置为低电平（False）时，上面8行输出，高电平时下面8行输出
-GPIO.output(D,False)
-
 ### 常数定义 ###############################################################
 # 行扫描时的时间间隔，根据硬件不同，可能需要微调至一个合适的值，
 # 使得字迹看上去清晰明亮无闪烁
@@ -79,10 +75,21 @@ def testBit(int_type, offset):
     return(int_type & mask)>0
 
 ### 根据两个字节的点阵信息输出列信号
-def printRow( row, byteLeft, byteRight ):
+def printRow( row, byteRight, byteLeft ):
 	
 	# 防止屏幕闪烁，在所有数据传输完毕以前关闭输出（使能端置高电平）
 	GPIO.output(G,True)
+	
+	# D端口用来控制16×16点阵的上面8行输出还是下面8行输出
+	# D端口设置为低电平（False）时，上面8行输出，高电平时下面8行输出
+	# 所以，当指定的行数小于等于7时（0-7），将D端口置低电平
+	# 指定的行数大于7时（8-15），将D端口置高电平
+	GPIO.output(D, row>7)
+	
+	# 后面指定输出行时需要以0-7为基准计算位信息，
+	# 所以当行号为8-15时，需要先调整到0-7
+	if (row>7):
+		row=row-8
 	
 	# 指定输出行
 	GPIO.output(A,testBit(row,0))
@@ -119,24 +126,32 @@ def printRow( row, byteLeft, byteRight ):
 	GPIO.output(G,False)  #HC138输出有效，打开显示
 	GPIO.output(LAT,False) #锁定HC595数据输出
 	
+	time.sleep(0.0006)
 	return
-
-
-while True:
-	
-	# 指定输出行，循环指定，指定方式是设置译码器的A0,A1,A2三个端口
-	for r in (0,1,2,3,4,5,6,7):
-		printRow(r, 0b00000000, 0b11111111)
-		time.sleep(0.0005)
-		#GPIO.output(G,True) #for test to be deleted
-		
-		
-		
 
 ### 根据输入的32个字节数组，输出到LED屏上去
 def printLED( bytes32 ):   
-   # 从第一行开始扫描显示，指定方式是设置译码器的A0,A1,A2三个端口
-   return
+	# 行扫描显示，指定方式是设置译码器的A0,A1,A2三个端口
+	for row in range(0, 15):
+		printRow(row, bytes32[row*2], bytes32[row*2 + 1])
+	return
+
+### 主程序开始
+while True:
+	printLED([0x3F,0xFF,0x3F,0xFF,0x03,0xE0,0x03,0xE0,0x33,0xE7,0x33,0xE7,0x03,0xE0,0x33,0xE7,0x33,0xE7,0x03,0xE0,0x03,0xE0,0x33,0x9F,0x3F,0x9F,0x3F,0x80,0x7F,0xC0,0xFF,0xFF])
+	
+	
+	
+#	# 指定输出行，循环指定，指定方式是设置译码器的A0,A1,A2三个端口
+#	for r in (0,1,2,3,4,5,6,7):
+#		printRow(r, 0b00000000, 0b00000000)
+#		time.sleep(0.2)
+#		#GPIO.output(G,True) #for test to be deleted
+		
+		
+		
+
+
 
 
 
