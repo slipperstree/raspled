@@ -126,9 +126,9 @@ while True:
 	
 	# 指定输出行，循环指定，指定方式是设置译码器的A0,A1,A2三个端口
 	for r in (0,1,2,3,4,5,6,7):
-		#printRow(r, 0b00000000, 0b11111111)
-		#time.sleep(0.0005)
-		GPIO.output(G,True) #for test to be deleted
+		printRow(r, 0b00000000, 0b11111111)
+		time.sleep(0.0005)
+		#GPIO.output(G,True) #for test to be deleted
 		
 		
 		
