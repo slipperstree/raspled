@@ -15,6 +15,12 @@ import struct
 g_cnt=0
 g_idx=0
 
+# 定义最终显示到LED屏幕上的点阵数组
+# 滚动字幕的模式下，点阵数组不是完整的一个汉字，而是两个连续汉字位移N位以后暴露在可视范围内的点阵状态
+# 比如你好这两个连续汉字，以向左滚动的方式显示时，有可能出现需要显示你字的右半部分和好字的左半部分
+# 只定义一个是因为目前只有一块16x16的LED屏，以后增加屏幕时需要修改相关代码
+g_byte32ForShow=[]
+
 ## 点阵的行输出控制（指定希望点亮指定行的灯）
 # 在购买到的16X16的点阵LED集成板上面有4块8X8的小点阵LED屏
 # 另外还有两个译码器74HC138，这两个译码器分别控制上面两个小点阵屏和下面两个小点阵屏
@@ -73,6 +79,7 @@ GPIO.setup(LAT,GPIO.OUT)
 
 # G端口为使能端口，低电平时输出有效
 GPIO.output(G,False)
+GPIO.output(D,False)
 
 ### 常数定义 ###############################################################
 # 行扫描时的时间间隔，根据硬件不同，可能需要微调至一个合适的值，
@@ -109,8 +116,8 @@ def printRow( row, byteRight, byteLeft ):
 	GPIO.output(C,testBit(row,2))
 		
 	# 输入列数据
-	GPIO.output(LAT,False)
-	GPIO.output(CLK,False)
+	#GPIO.output(LAT,False)
+	#GPIO.output(CLK,False)
 
 	# 左侧LED列数据串行输入
 	# 依次从高到低取位数据（也就是从左向右取）
@@ -136,8 +143,8 @@ def printRow( row, byteRight, byteLeft ):
 	# 左右侧LED列数据共16位设置完毕，拉高LAT，
 	# 将位移缓存器中的数据输出至Q1-Q8并行输出端口，即点亮当前指定行的指定列的LED灯
 	GPIO.output(LAT,True) #允许HC595数据输出到Q1-Q8端口
-	GPIO.output(G,False)  #HC138输出有效，打开显示
 	GPIO.output(LAT,False) #锁定HC595数据输出
+	GPIO.output(G,False)  #HC138输出有效，打开显示
 	
 	time.sleep(0.001)
 	return
@@ -166,13 +173,47 @@ def executeEvery(seconds,callback):
 
 ### 定时器的回调函数，汉字索引加1，如果到达句尾再重置为0
 def autoDisp():
+	# 这里的g_idx表示当前显示第几个汉字
 	global g_idx
 	global g_cnt
+	global g_byte32ForShow
+	global JUZI
 	if (g_idx<g_cnt-1):
 		g_idx=g_idx+1
 	else:
 		g_idx=0
+	g_byte32ForShow=JUZI[g_idx]
 
+def autoMoveLeft():
+	# 这里的g_idx表示当前的左位移量
+	global g_idx
+	global g_cnt
+	global g_byte32ForShow
+	global JUZI
+	if (g_idx<g_cnt*16-1):
+		g_idx=g_idx+1
+	else:
+		g_idx=0
+	
+	# 根据左位移量计算出当前需要从第n个汉字的第m列开始显示到第n+1个汉字的第m列
+	# 并将这一部分的点阵复制到用于显示的点阵数组里去
+	n=g_idx/16
+	m=g_idx%16
+	n=0
+	m=1
+	g_idx=1
+	
+	# 循环16行，依次左移N位
+	for row in range(0, 16):
+		# 合并第一个字和第二个字同一行的4个字节连接起来成为一个4字节的长二进制数以便于位移
+		mergeRow=JUZI[n][row*2]<<24 | JUZI[n][row*2+1]<<16 | JUZI[n+1][row*2]<<8 | JUZI[n+1][row*2+1]
+		# 合并完的4字节数左移指定位数(移出左端的部分要清掉)
+		mergeRow=mergeRow<<g_idx & 0xffffffff
+		# 只保留左边2个字节
+		mergeRow=mergeRow>>16
+		g_byte32ForShow[row*2]=mergeRow>>8
+		g_byte32ForShow[row*2+1]=mergeRow & 0x00ff
+	
 ### 根据传入的汉字（只能是一个汉字），获取汉字的32位字模数据（即点阵信息）
 def getHZBytes32(hz):
 	retBytes32 = []
@@ -232,9 +273,11 @@ for i in range(0, g_cnt):
 # 启动定时器
 executeEvery(0.3, autoDisp)
 
+#executeEvery(0.2, autoMoveLeft)
+
 # 开始显示文本
+g_byte32ForShow=JUZI[g_idx]
 while True:
-	global g_idx
-	printLED(JUZI[g_idx])
+	printLED(g_byte32ForShow)
 	
 	
