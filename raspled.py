@@ -1,8 +1,9 @@
 ﻿#!/usr/bin/env python
 import sys
 
+# 参数检查，必须传入一个参数来指定显示的文字
 if (len(sys.argv)==1):
-	print 'useage: need parameter what you want disp on the led screen.'
+	print 'usage: needs parameter for what you want HanZi to display on the led screen.'
 	exit()
 
 import RPi.GPIO as GPIO
@@ -13,8 +14,6 @@ import struct
 
 g_cnt=0
 g_idx=0
-
-
 
 ## 点阵的行输出控制（指定希望点亮指定行的灯）
 # 在购买到的16X16的点阵LED集成板上面有4块8X8的小点阵LED屏
@@ -72,7 +71,7 @@ GPIO.setup(DI,GPIO.OUT)
 GPIO.setup(CLK,GPIO.OUT)
 GPIO.setup(LAT,GPIO.OUT)
 
-# G端口为使能端口，低电平时输出有效1
+# G端口为使能端口，低电平时输出有效
 GPIO.output(G,False)
 
 ### 常数定义 ###############################################################
@@ -151,6 +150,7 @@ def printLED( bytes ):
 		
 	return
 
+### 利用定时器每隔指定的时间就调用回调函数（用于切换显示下一个汉字）
 def executeEvery(seconds,callback):
 	def f():
 		callback()
@@ -164,7 +164,7 @@ def executeEvery(seconds,callback):
 	
 	return stop
 
-
+### 定时器的回调函数，汉字索引加1，如果到达句尾再重置为0
 def autoDisp():
 	global g_idx
 	global g_cnt
@@ -173,6 +173,7 @@ def autoDisp():
 	else:
 		g_idx=0
 
+### 根据传入的汉字（只能是一个汉字），获取汉字的32位字模数据（即点阵信息）
 def getHZBytes32(hz):
 	retBytes32 = []
 	
@@ -196,6 +197,7 @@ def getHZBytes32(hz):
 		retBytes32.append(zk[i])
 	return retBytes32
 
+### 测试字模函数，在终端上打印汉字点阵
 def dispBytes32(bytes32):
 	for i in range(0, 32):
 		byteZk=bytes32[i]
@@ -209,18 +211,28 @@ def dispBytes32(bytes32):
 			print ""
 	return
 
-### 主程序开始
+### 主程序开始 ###################################################
 # 一次性将字库全部读入内存
 zk=np.fromfile('HZK16.dat', dtype='b')
 
+# 从参数取得要显示的文本
 s=sys.argv[1]
+# 取得文本的字数
 g_cnt=len(s.decode('utf-8'))
 print g_cnt
+
+# 清空大点阵数组
 JUZI=[]
+
+# 一个字一个字分别取得32位的字模信息并add到大点阵数组中
+# 由于子函数接收的参数只能是一个汉字，所以需要按UTF8格式分割字符串： s[i*3:i*3+3]
 for i in range(0, g_cnt):
 	JUZI.append(getHZBytes32(s[i*3:i*3+3]))
 
+# 启动定时器
 executeEvery(0.3, autoDisp)
+
+# 开始显示文本
 while True:
 	global g_idx
 	printLED(JUZI[g_idx])
