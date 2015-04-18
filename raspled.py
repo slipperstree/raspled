@@ -146,7 +146,7 @@ def printRow( row, byteRight, byteLeft ):
 	GPIO.output(LAT,False) #锁定HC595数据输出
 	GPIO.output(G,False)  #HC138输出有效，打开显示
 	
-	time.sleep(0.001)
+	time.sleep(0.0009)
 	return
 
 ### 根据输入的32个字节数组，输出到上下LED屏上去
@@ -271,7 +271,7 @@ for i in range(0, g_cnt):
 	JUZI.append(getHZBytes32(s[i*3:i*3+3]))
 
 # 启动定时器
-executeEvery(0.3, autoDisp)
+executeEvery(1, autoDisp)
 
 #executeEvery(0.2, autoMoveLeft)
 
