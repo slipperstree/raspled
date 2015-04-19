@@ -1,10 +1,23 @@
 ﻿#!/usr/bin/env python
 import sys
 
-# 参数检查，必须传入一个参数来指定显示的文字
-if (len(sys.argv)==1):
-	print 'usage: needs parameter for what you want HanZi to display on the led screen.'
+# 参数检查，至少要传入一个参数来指定显示的文字
+# 第二个参数是显示模式，1：全屏切换（默认）  2：向左侧滚动显示
+if (len(sys.argv)<2):
+	print 'usage: raspled.py text [mode=1/2]'
 	exit()
+
+# 从参数取得要显示的文本
+s=sys.argv[1]
+
+# 如果设置了显示模式参数则取得，若没有设置则使用默认模式
+mode = "1"
+if (len(sys.argv)>2):
+	mode=sys.argv[2]
+if (mode != "1" and mode != "2"):
+	print 'mode is not valid. usage: raspled.py text [mode=1/2]'
+	exit()
+
 
 import RPi.GPIO as GPIO
 import time
@@ -185,12 +198,14 @@ def autoDisp():
 	g_byte32ForShow=JUZI[g_idx]
 
 def autoMoveLeft():
+	tmp_byte32ForShow=[0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]
+	
 	# 这里的g_idx表示当前的左位移量
 	global g_idx
 	global g_cnt
 	global g_byte32ForShow
 	global JUZI
-	if (g_idx<g_cnt*16-1):
+	if (g_idx<(g_cnt-1)*16-1):
 		g_idx=g_idx+1
 	else:
 		g_idx=0
@@ -199,20 +214,38 @@ def autoMoveLeft():
 	# 并将这一部分的点阵复制到用于显示的点阵数组里去
 	n=g_idx/16
 	m=g_idx%16
-	n=0
-	m=1
-	g_idx=1
 	
 	# 循环16行，依次左移N位
 	for row in range(0, 16):
 		# 合并第一个字和第二个字同一行的4个字节连接起来成为一个4字节的长二进制数以便于位移
-		mergeRow=JUZI[n][row*2]<<24 | JUZI[n][row*2+1]<<16 | JUZI[n+1][row*2]<<8 | JUZI[n+1][row*2+1]
-		# 合并完的4字节数左移指定位数(移出左端的部分要清掉)
-		mergeRow=mergeRow<<g_idx & 0xffffffff
-		# 只保留左边2个字节
-		mergeRow=mergeRow>>16
-		g_byte32ForShow[row*2]=mergeRow>>8
-		g_byte32ForShow[row*2+1]=mergeRow & 0x00ff
+		# 在利用bin函数转换成二进制形式的字符串之前要 & 0xff一下，这样做了之后转换出来的就是以无符号数的形式转换了。
+		# 否则会以有符号形式转转换，首位为1时可能转出来的东西很奇怪。导致字模转换错误
+		# 第1个字左侧
+		tmp1 = bin(JUZI[n][row*2] & 0xff).split("b")[1]
+		tmp1 = "0" * (8-len(tmp1)) + tmp1
+
+		# 第1个字右侧
+		tmp2 = bin(JUZI[n][row*2+1] & 0xff).split("b")[1]
+		tmp2 = "0" * (8-len(tmp2)) + tmp2
+
+		# 第2个字左侧
+		tmp3 = bin(JUZI[n+1][row*2] & 0xff).split("b")[1]
+		tmp3 = "0" * (8-len(tmp3)) + tmp3
+
+		# 第2个字右侧
+		tmp4 = bin(JUZI[n+1][row*2+1] & 0xff).split("b")[1]
+		tmp4 = "0" * (8-len(tmp4)) + tmp4
+		
+		mergeRow=tmp1 + tmp2 + tmp3 + tmp4
+		
+		#Debug用
+		#print "mergeRow=" + mergeRow
+		
+		# 合并完的4字节左移指定位数
+		mergeRow=mergeRow[m:m+16]
+		tmp_byte32ForShow[row*2]=int(mergeRow[:8],2)
+		tmp_byte32ForShow[row*2+1]=int(mergeRow[8:],2)
+	g_byte32ForShow = tmp_byte32ForShow
 	
 ### 根据传入的汉字（只能是一个汉字），获取汉字的32位字模数据（即点阵信息）
 def getHZBytes32(hz):
@@ -256,8 +289,7 @@ def dispBytes32(bytes32):
 # 一次性将字库全部读入内存
 zk=np.fromfile('HZK16.dat', dtype='b')
 
-# 从参数取得要显示的文本
-s=sys.argv[1]
+
 # 取得文本的字数
 g_cnt=len(s.decode('utf-8'))
 print g_cnt
@@ -271,12 +303,15 @@ for i in range(0, g_cnt):
 	JUZI.append(getHZBytes32(s[i*3:i*3+3]))
 
 # 启动定时器
-executeEvery(1, autoDisp)
+if (mode == "1"):
+	executeEvery(0.3, autoDisp)
 
-#executeEvery(0.2, autoMoveLeft)
+if (mode == "2"):
+	executeEvery(0.05, autoMoveLeft)
 
 # 开始显示文本
-g_byte32ForShow=JUZI[g_idx]
+g_byte32ForShow=JUZI[0]
+
 while True:
 	printLED(g_byte32ForShow)
 	
