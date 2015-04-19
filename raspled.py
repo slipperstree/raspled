@@ -312,7 +312,14 @@ if (mode == "2"):
 # 开始显示文本
 g_byte32ForShow=JUZI[0]
 
-while True:
-	printLED(g_byte32ForShow)
-	
-	
+try:
+	while True:
+		printLED(g_byte32ForShow)
+		
+except KeyboardInterrupt:
+	pass
+
+GPIO.cleanup()
+print
+print "press Ctrl+C again to quit..."
+
